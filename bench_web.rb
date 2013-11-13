@@ -37,16 +37,18 @@ uri = begin
         exit(1)
       end
 
+GC.disable
+
 finish_time = Time.now + duration
 results = []
 while (start=Time.now) < finish_time
-  GC.disable
   res = Net::HTTP.get_response(uri)
   req_duration = Time.now - start
   results << {duration: req_duration, code: res.code, length: res.body.length}
 
   GC.enable
   GC.start
+  GC.disable
 
   padding = (1 / per_second.to_f) - (Time.now - start)
   if padding > 0
@@ -54,6 +56,8 @@ while (start=Time.now) < finish_time
   end
   putc "."
 end
+
+GC.enable
 
 puts
 puts "Results"
@@ -78,7 +82,7 @@ puts "Percentage of the successful requests served within a certain time (ms)"
 good_requests = results.find_all{|r| r[:code] == "200"}.map{|r| r[:duration]}.sort
 
 if good_requests.length > 0
-  [50,66,75,80,90,95,98,99,100].map{ |percentile|
+  [25,50,66,75,80,90,95,98,99,100].map{ |percentile|
     time = good_requests[((percentile.to_f / 100.0) * (good_requests.length-1)).to_i]
     puts "  #{percentile}%\t\t#{(time * 1000).to_i}"
   }
