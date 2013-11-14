@@ -37,18 +37,14 @@ uri = begin
         exit(1)
       end
 
-GC.disable
 
 finish_time = Time.now + duration
 results = []
 while (start=Time.now) < finish_time
-  res = Net::HTTP.get_response(uri)
-  req_duration = Time.now - start
-  results << {duration: req_duration, code: res.code, length: res.body.length}
 
-  GC.enable
-  GC.start
-  GC.disable
+  res = `curl -w %{time_total}:%{size_download}:%{http_code} -o /dev/null -s #{uri.to_s}`
+  req_duration, length, http_code = res.split(':')
+  results << {duration: req_duration.to_f, code: http_code, length: length.to_i}
 
   padding = (1 / per_second.to_f) - (Time.now - start)
   if padding > 0
@@ -57,7 +53,6 @@ while (start=Time.now) < finish_time
   putc "."
 end
 
-GC.enable
 
 puts
 puts "Results"
